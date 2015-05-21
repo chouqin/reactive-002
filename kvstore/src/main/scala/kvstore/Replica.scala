@@ -52,10 +52,14 @@ class Replica(val arbiter: ActorRef, persistenceProps: Props) extends Actor {
   var expectedSeq = 0L
   // persistence actor
   val persistence = context.actorOf(persistenceProps)
+  // collect acknowledge from persistence actor
   var acks = Map.empty[Long, (ActorRef, Persist)]
-  // id -> (sender, replicators)
+  // waiting for replicators and persitence to reply: id -> (sender, replicators)
   var waitingRefs = Map.empty[Long, (ActorRef, Set[ActorRef])]
+  // waiting for replicators to reply when a secondary replica first join
   var replicateAcks = Map.empty[ActorRef, (Long, Map[String, String])]
+
+  // schedule to send persist message to persistence
   context.system.scheduler.schedule(100.milliseconds, 100.milliseconds, self, Timeout)
 
   var currentId = 0L
@@ -177,8 +181,6 @@ class Replica(val arbiter: ActorRef, persistenceProps: Props) extends Actor {
         ack._1 ! SnapshotAck(key, seq)
         acks -= seq
         expectedSeq += 1
-      } else {
-        println(s"unexpected seq $seq")
       }
 
     case Timeout =>
@@ -201,7 +203,6 @@ class Replica(val arbiter: ActorRef, persistenceProps: Props) extends Actor {
 
     // send replicate messages
     replicators.foreach { replicator =>
-//      println(s"send replicate to replicator $key, $id")
       replicator ! Replicate(key, valueOption, id)
       refs += replicator
     }

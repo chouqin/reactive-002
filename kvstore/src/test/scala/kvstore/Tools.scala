@@ -43,7 +43,6 @@ trait Tools { this: TestKit with FunSuiteLike with Matchers with ImplicitSender 
 
     def waitAck(s: Long): Unit = {
       probe.expectMsg(OperationAck(s))
-//      println(s"wait for sequeuece $s, OK!")
     }
 
     def waitFailed(s: Long): Unit = probe.expectMsg(OperationFailed(s))

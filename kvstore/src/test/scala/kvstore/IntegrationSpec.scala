@@ -22,6 +22,7 @@ class IntegrationSpec(_system: ActorSystem) extends TestKit(_system)
   import Replica._
   import Replicator._
   import Arbiter._
+  import FakeSecondary._
 
   def this() = this(ActorSystem("ReplicatorSpec"))
 
@@ -52,10 +53,8 @@ class IntegrationSpec(_system: ActorSystem) extends TestKit(_system)
     client.getAndVerify("k1") // 7
 
     for (i <- 0 until 100) {
-      println(s"set k1 to v$i")
       client.setAcked("k1", s"v$i")
       client.getAndVerify("k1")
-      println(s"remove k1  v$i")
       client.removeAcked("k1")
       client.getAndVerify("k1")
     }
@@ -82,16 +81,12 @@ class IntegrationSpec(_system: ActorSystem) extends TestKit(_system)
       client.getAndVerify(key)
     }
   }
-
-  private def isValid(key: String): Boolean = {
-    val items = key.split("_")
-    items.length == 2 && items(1).toInt % 3 == 0
-  }
 }
 
 
 class FakeSecondary extends Actor {
   import Replicator._
+  import FakeSecondary._
 
   def receive = {
     case Snapshot(key, _, seq) =>
@@ -99,8 +94,10 @@ class FakeSecondary extends Actor {
         sender() ! SnapshotAck(key, seq)
       }
   }
+}
 
-  private def isValid(key: String): Boolean = {
+object FakeSecondary {
+  def isValid(key: String): Boolean = {
     val items = key.split("_")
     items.length == 2 && items(1).toInt % 3 == 0
   }
